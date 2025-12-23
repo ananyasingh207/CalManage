@@ -78,7 +78,7 @@ const MonthView = memo(({ currentDate, events, handleDayClick, handleEventClick 
                                     <div
                                         key={ev._id}
                                         onClick={(e) => handleEventClick(e, ev)}
-                                        className="px-2 py-0.5 rounded-md text-[10px] font-medium truncate shadow-md transition-transform hover:scale-105 cursor-pointer"
+                                        className="h-5 px-2 flex items-center rounded-md text-[10px] font-medium truncate shadow-md hover:brightness-110 cursor-pointer transition-all"
                                         style={{
                                             backgroundColor: `${ev.color}20`,
                                             color: ev.color,
@@ -140,7 +140,7 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
                                     <div
                                         key={ev._id}
                                         onClick={(e) => handleEventClick(e, ev)}
-                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded truncate cursor-pointer hover:scale-105 transition-transform"
+                                        className="h-5 px-1.5 flex items-center text-[10px] font-medium rounded truncate cursor-pointer hover:brightness-110 transition-all"
                                         style={{
                                             backgroundColor: `${ev.color}30`,
                                             borderLeft: `2px solid ${ev.color}`,
@@ -194,8 +194,8 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
                             key={ev._id}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            whileHover={{ scale: 1.05, zIndex: 50 }}
-                            className="absolute rounded-md p-1.5 text-xs border-l-2 shadow-lg overflow-hidden cursor-pointer"
+                            whileHover={{ zIndex: 50, brightness: 1.1 }}
+                            className="absolute rounded-md p-1.5 text-xs border-l-2 shadow-lg overflow-hidden cursor-pointer transition-all"
                             style={{
                                 left: `${(dayIndex + 1) * (100 / 8)}%`,
                                 width: `${100 / 8 - 0.5}%`,
@@ -252,7 +252,7 @@ const DayView = memo(({ currentDate, events, setSelectedDate, setIsEventModalOpe
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 onClick={(e) => handleEventClick(e, ev)}
-                                className="px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer hover:scale-105 transition-transform shadow-md"
+                                className="px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer hover:brightness-110 transition-all shadow-md"
                                 style={{
                                     backgroundColor: `${ev.color}25`,
                                     borderLeft: `3px solid ${ev.color}`,
@@ -295,7 +295,8 @@ const DayView = memo(({ currentDate, events, setSelectedDate, setIsEventModalOpe
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             onClick={(e) => handleEventClick(e, ev)}
-                            className="absolute left-[70px] right-4 rounded-xl p-3 border-l-4 shadow-lg cursor-pointer flex flex-col justify-center hover:scale-[1.02] transition-transform"
+                            whileHover={{ zIndex: 50, brightness: 1.05 }}
+                            className="absolute left-[70px] right-4 rounded-xl p-3 border-l-4 shadow-lg cursor-pointer flex flex-col justify-center transition-all"
                             style={{
                                 top: `${top}px`,
                                 height: `${height}px`,
