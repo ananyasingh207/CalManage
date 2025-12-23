@@ -22,7 +22,8 @@ import {
     setHours,
     setMinutes,
     differenceInMinutes,
-    startOfDay
+    startOfDay,
+    endOfDay
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Filter, MoreHorizontal, Clock, Trash2, X, MapPin, Edit, Loader } from 'lucide-react';
 import EventModal from '../components/Modals/EventModal';
@@ -52,7 +53,13 @@ const MonthView = memo(({ currentDate, events, handleDayClick, handleEventClick 
             <div className="flex-1 w-full max-w-full grid grid-cols-7 grid-rows-6 gap-2 min-h-[600px]">
                 {days.map(day => {
                     const dayEvents = events
-                        .filter(ev => isSameDay(new Date(ev.start), day))
+                        .filter(ev => {
+                            try {
+                                const evStart = startOfDay(new Date(ev.start));
+                                const evEnd = endOfDay(new Date(ev.end));
+                                return day >= evStart && day <= evEnd;
+                            } catch (e) { return false; }
+                        })
                         .sort((a, b) => new Date(a.start) - new Date(b.start));
                     return (
                         <motion.div
@@ -105,11 +112,43 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
 
     const weekEvents = events.filter(ev => {
         const evStart = new Date(ev.start);
-        return evStart >= weekStart && evStart <= weekEnd;
+        const evEnd = new Date(ev.end);
+        return evStart <= weekEnd && evEnd >= weekStart;
     }).sort((a, b) => new Date(a.start) - new Date(b.start));
 
     const allDayEvents = weekEvents.filter(ev => ev.allDay);
-    const timedEvents = weekEvents.filter(ev => !ev.allDay);
+
+    // Process timed events into renderable segments
+    const timedEventSegments = useMemo(() => {
+        const segments = [];
+        const rawTimedEvents = weekEvents.filter(ev => !ev.allDay);
+
+        rawTimedEvents.forEach(ev => {
+            const evStart = new Date(ev.start);
+            const evEnd = new Date(ev.end);
+
+            // Iterate through each day of the week
+            days.forEach(day => {
+                const dayStart = startOfDay(day);
+                const dayEnd = endOfDay(day);
+
+                // Check if event overlaps with this day
+                if (evStart <= dayEnd && evEnd >= dayStart) {
+                    // Clamp start/end to the day boundaries
+                    const displayStart = evStart < dayStart ? dayStart : evStart;
+                    const displayEnd = evEnd > dayEnd ? dayEnd : evEnd;
+
+                    segments.push({
+                        ...ev, // Keep original event props
+                        _segmentStart: displayStart,
+                        _segmentEnd: displayEnd,
+                        _dayIndex: getDay(day)
+                    });
+                }
+            });
+        });
+        return segments;
+    }, [weekEvents, days]);
 
     return (
         <div className="h-full flex flex-col overflow-hidden blur-appear">
@@ -179,19 +218,20 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
                     </div>
                 ))}
 
-                {timedEvents.map(ev => {
-                    const evStart = new Date(ev.start);
-                    const evEnd = new Date(ev.end);
+                {timedEventSegments.map((segment, idx) => {
+                    const evStart = segment._segmentStart;
+                    const evEnd = segment._segmentEnd;
 
-                    const dayIndex = getDay(evStart);
+                    const dayIndex = segment._dayIndex;
                     const startHour = getHours(evStart);
                     const durationMinutes = differenceInMinutes(evEnd, evStart);
                     const top = (startHour * 64) + ((evStart.getMinutes() / 60) * 64);
-                    const height = Math.max((durationMinutes / 60) * 64, 24);
+                    // Minimum height for visibility, but respected duration for valid range
+                    const height = Math.max((durationMinutes / 60) * 64, 20);
 
                     return (
                         <motion.div
-                            key={ev._id}
+                            key={`${segment._id}-${dayIndex}-${idx}`}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             whileHover={{ zIndex: 50, brightness: 1.1 }}
@@ -201,14 +241,14 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
                                 width: `${100 / 8 - 0.5}%`,
                                 top: `${top}px`,
                                 height: `${height}px`,
-                                backgroundColor: `${ev.color}40`,
-                                borderColor: ev.color,
+                                backgroundColor: `${segment.color}40`,
+                                borderColor: segment.color,
                                 color: 'white',
                                 backdropFilter: 'blur(4px)'
                             }}
-                            onClick={(e) => handleEventClick(e, ev)}
+                            onClick={(e) => handleEventClick(e, segment)}
                         >
-                            <div className="font-bold truncate">{ev.title}</div>
+                            <div className="font-bold truncate">{segment.title}</div>
                             <div className="text-[10px] opacity-80 truncate">{format(evStart, 'h:mm a')}</div>
                         </motion.div>
                     );
@@ -221,7 +261,11 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
 const DayView = memo(({ currentDate, events, setSelectedDate, setIsEventModalOpen, handleDateClick, handleEventClick }) => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const dayEvents = events
-        .filter(ev => isSameDay(new Date(ev.start), currentDate))
+        .filter(ev => {
+            const evStart = startOfDay(new Date(ev.start));
+            const evEnd = endOfDay(new Date(ev.end));
+            return currentDate >= evStart && currentDate <= evEnd;
+        })
         .sort((a, b) => new Date(a.start) - new Date(b.start));
 
     const allDayEvents = dayEvents.filter(ev => ev.allDay);
@@ -282,11 +326,19 @@ const DayView = memo(({ currentDate, events, setSelectedDate, setIsEventModalOpe
                 ))}
 
                 {timedEvents.map(ev => {
-                    const evStart = new Date(ev.start);
-                    const evEnd = new Date(ev.end);
-                    const startHour = getHours(evStart);
-                    const durationMinutes = differenceInMinutes(evEnd, evStart);
-                    const top = (startHour * 80) + ((evStart.getMinutes() / 60) * 80);
+                    // Clamp event to the current day for rendering
+                    const realStart = new Date(ev.start);
+                    const realEnd = new Date(ev.end);
+
+                    const dayStart = startOfDay(currentDate);
+                    const dayEnd = endOfDay(currentDate);
+
+                    const displayStart = realStart < dayStart ? dayStart : realStart;
+                    const displayEnd = realEnd > dayEnd ? dayEnd : realEnd;
+
+                    const startHour = getHours(displayStart);
+                    const durationMinutes = differenceInMinutes(displayEnd, displayStart);
+                    const top = (startHour * 80) + ((displayStart.getMinutes() / 60) * 80);
                     const height = Math.max((durationMinutes / 60) * 80, 40);
 
                     return (
@@ -308,7 +360,7 @@ const DayView = memo(({ currentDate, events, setSelectedDate, setIsEventModalOpe
                             <div className="font-bold text-white text-sm">{ev.title}</div>
                             <div className="flex items-center text-xs text-gray-300 gap-2 mt-1">
                                 <Clock className="w-3 h-3" />
-                                {format(evStart, 'h:mm a')} - {format(evEnd, 'h:mm a')}
+                                {format(displayStart, 'h:mm a')} - {format(displayEnd, 'h:mm a')}
                             </div>
                             {ev.description && <div className="text-xs text-gray-400 mt-1 truncate">{ev.description}</div>}
                         </motion.div>
