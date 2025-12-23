@@ -1,4 +1,5 @@
 import { useState, useContext, useEffect, useRef, useMemo, memo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useCalendar } from '../context/CalendarContext';
 import {
     format,
@@ -419,8 +420,12 @@ const YearView = memo(({ currentDate, setCurrentDate, setView }) => {
 });
 
 const CalendarPage = () => {
+    const location = useLocation();
     const { calendars, sharedCalendars, fetchCalendarEvents, deleteEvent, visibleCalendarIds } = useCalendar();
-    const [currentDate, setCurrentDate] = useState(new Date());
+
+    // Initialize currentDate from navigation state if available (one-time)
+    const initialDate = location.state?.eventDate ? new Date(location.state.eventDate) : new Date();
+    const [currentDate, setCurrentDate] = useState(initialDate);
     const [view, setView] = useState('month');
     const [allEvents, setAllEvents] = useState([]);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);

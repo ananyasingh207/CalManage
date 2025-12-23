@@ -72,7 +72,7 @@ const MiniCalendarGrid = ({ currentDate, selectedDate, onDateSelect }) => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
-  const { calendars, sharedCalendars, fetchCalendarEvents, visibleCalendarIds, dashboardEvents, setDashboardEvents, selectedDate, setSelectedDate } = useCalendar();
+  const { calendars, sharedCalendars, fetchCalendarEvents, visibleCalendarIds, dashboardEvents, setDashboardEvents, selectedDate, setSelectedDate, searchQuery } = useCalendar();
 
   // Initialize from cache if available
   const [allEventsRaw, setAllEventsRaw] = useState(dashboardEvents || []);
@@ -143,11 +143,22 @@ const Dashboard = () => {
   }, [calendars, sharedCalendars]); // Removed dashboardEvents/setDashboardEvents to avoid loops
 
   const todaysEvents = useMemo(() => {
-    return allEventsRaw.filter(ev =>
+    const filtered = allEventsRaw.filter(ev =>
       visibleCalendarIds.has(ev.calendarId) &&
       isSameDay(new Date(ev.start), selectedDate)
     );
-  }, [allEventsRaw, visibleCalendarIds, selectedDate]);
+
+    // Apply search filter if searchQuery exists
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const query = searchQuery.toLowerCase();
+      return filtered.filter(ev =>
+        ev.title?.toLowerCase().includes(query) ||
+        ev.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [allEventsRaw, visibleCalendarIds, selectedDate, searchQuery]);
 
   const now = new Date();
   // If selectedDate is NOT today, show all events for that day as if it's the start of the day
@@ -288,7 +299,9 @@ const Dashboard = () => {
                   </>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    {isTodayDate ? "No upcoming events for today. Relax and recharge! ☕" : "No events scheduled for this day."}
+                    {searchQuery && searchQuery.trim().length > 0
+                      ? "No upcoming events match your search."
+                      : (isTodayDate ? "No upcoming events for today. Relax and recharge! ☕" : "No events scheduled for this day.")}
                   </div>
                 )}
               </div>
@@ -335,7 +348,9 @@ const Dashboard = () => {
                 ))
               ) : (
                 <div className="p-8 text-center border border-white/5 rounded-xl border-dashed">
-                  <p className="text-gray-500 text-sm">No more events scheduled.</p>
+                  <p className="text-gray-500 text-sm">
+                    {searchQuery && searchQuery.trim().length > 0 ? 'No events match your search.' : 'No more events scheduled.'}
+                  </p>
                 </div>
               )}
             </div>

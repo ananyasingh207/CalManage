@@ -47,7 +47,9 @@ const Layout = () => {
     unreadCount,
     markAsRead,
     deleteNotification,
-    clearNotifications
+    clearNotifications,
+    searchQuery,
+    setSearchQuery
   } = useCalendar();
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,8 +74,7 @@ const Layout = () => {
   const [selectedCalendarsForGroup, setSelectedCalendarsForGroup] = useState([]);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
 
-  // Search State
-  const [searchQuery, setSearchQuery] = useState('');
+  // Search State (for dropdown only, query is in context)
   const [searchResults, setSearchResults] = useState({ tasks: [], events: [] });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef(null);
@@ -474,7 +475,12 @@ const Layout = () => {
                           {searchResults.events.map(ev => (
                             <div
                               key={ev._id}
-                              onClick={() => { navigate('/calendar'); setIsSearchOpen(false); setSearchQuery(''); }}
+                              onClick={() => {
+                                const eventDate = new Date(ev.start);
+                                navigate('/calendar', { state: { eventDate } });
+                                setIsSearchOpen(false);
+                                setSearchQuery('');
+                              }}
                               className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg cursor-pointer"
                             >
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ev.color }} />

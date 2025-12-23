@@ -25,6 +25,9 @@ export const CalendarProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Search State (shared with Dashboard)
+  const [searchQuery, setSearchQuery] = useState('');
+
   const calendarsRef = useRef(calendars);
   const sharedCalendarsRef = useRef(sharedCalendars);
 
@@ -679,7 +682,8 @@ export const CalendarProvider = ({ children }) => {
     tasks, addTask, toggleTask, deleteTask,
     // Cache
     dashboardEvents, setDashboardEvents,
-    // Extra
+    // Search
+    searchQuery, setSearchQuery,
     // Extra
     deleteCalendar, removeShare, updateEvent,
     // Notifications
@@ -690,7 +694,8 @@ export const CalendarProvider = ({ children }) => {
     toggleCalendarVisibility, setCalendarsVisible, isCalendarVisible,
     addGroup, updateGroup, deleteGroup, toggleGroupVisibility, isGroupVisible, isGroupPartiallyVisible,
     tasks, dashboardEvents, notifications, unreadCount,
-    selectedDate // Add selectedDate to dependency array
+    selectedDate, // Add selectedDate to dependency array
+    searchQuery
   ]);
 
   return (
