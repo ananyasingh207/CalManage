@@ -273,26 +273,16 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between group cursor-pointer" onClick={() => handleReschedule(upNext)}>
                       <div className="flex -space-x-2">
                         {/* Placeholder avatars if no actual attendees displayed yet */}
                         <div className="w-8 h-8 rounded-full border-2 border-black bg-blue-600 flex items-center justify-center text-xs font-bold text-white">
                           {user?.name?.[0]}
                         </div>
                       </div>
-                      <div className="space-x-3">
-                        <button onClick={() => handleReschedule(upNext)} className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">
-                          Reschedule
-                        </button>
-                        {upNext.isMeeting ? (
-                          <button onClick={() => handleJoinMeeting(upNext.meetingLink)} className={`px-5 py-2 text-sm font-medium text-white rounded-lg shadow-lg transition-all ${!upNext.meetingLink ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/25'}`} disabled={!upNext.meetingLink}>
-                            Join Meeting
-                          </button>
-                        ) : (
-                          <button onClick={() => handleReschedule(upNext)} className="px-5 py-2 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 border border-white/10 transition-all">
-                            View Details
-                          </button>
-                        )}
+                      <div className="flex items-center gap-2 text-gray-400 group-hover:text-white transition-all group-hover:translate-x-1">
+                        <span className="text-sm font-medium">Edit</span>
+                        <ArrowRight className="w-4 h-4" />
                       </div>
                     </div>
                   </>
@@ -361,7 +351,7 @@ const Dashboard = () => {
             </h3>
             <div className="space-y-4">
               {pastEvents.map(event => (
-                <GlassPanel key={event._id} className={`p-5 flex items-center group cursor-default ${event.allDay ? 'border-l-4 border-l-gray-600' : ''}`}>
+                <GlassPanel key={event._id} className={`p-5 flex items-center group cursor-pointer ${event.allDay ? 'border-l-4 border-l-gray-600' : ''}`} onClick={() => handleReschedule(event)}>
                   {event.allDay ? (
                     <>
                       <div className="w-24 flex-shrink-0 text-right pr-6 border-r border-white/10 mr-6">
@@ -382,6 +372,11 @@ const Dashboard = () => {
                       </div>
                     </>
                   )}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white">
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </GlassPanel>
               ))}
             </div>
