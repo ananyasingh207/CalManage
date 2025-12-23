@@ -36,6 +36,13 @@ export const CalendarProvider = ({ children }) => {
     sharedCalendarsRef.current = sharedCalendars;
   }, [sharedCalendars]);
 
+  // Reset state on logout
+  useEffect(() => {
+    if (!user) {
+      setSelectedDate(new Date());
+    }
+  }, [user]);
+
   // Load visibility preferences from localStorage
   const loadVisibilityPreferences = useCallback(() => {
     if (!user || !user._id) return null;

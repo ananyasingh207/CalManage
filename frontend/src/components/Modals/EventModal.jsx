@@ -99,7 +99,8 @@ const EventModal = ({ isOpen, onClose, selectedDate, initialStartTime, initialEn
 
       if (eventToEdit.allDay) {
         const d = new Date(eventToEdit.start);
-        setEventDate(d.toISOString().split('T')[0]);
+        const pad = (n) => n.toString().padStart(2, '0');
+        setEventDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
         setStart('');
         setEnd('');
       } else {
@@ -114,30 +115,38 @@ const EventModal = ({ isOpen, onClose, selectedDate, initialStartTime, initialEn
         setEventDate('');
       }
 
-    } else if (selectedDate) {
+    } else {
       // Create Mode
       resetForm();
-      // Auto-select first editable calendar
-      if (editableCalendars.length > 0) {
-        setCalendarId(editableCalendars[0]._id);
-      }
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      setEventDate(dateStr);
-      if (initialStartTime) {
-        setStart(initialStartTime);
-      } else {
-        const hours = selectedDate.getHours().toString().padStart(2, '0');
-        const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
-        setStart(`${dateStr}T${hours}:${minutes}`);
-      }
-      if (initialEndTime) {
-        setEnd(initialEndTime);
-      } else {
-        const endHour = (selectedDate.getHours() + 1) % 24;
-        setEnd(`${dateStr}T${endHour.toString().padStart(2, '0')}:00`);
+
+      if (selectedDate) {
+        const pad = (n) => n.toString().padStart(2, '0');
+        const dateStr = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
+        setEventDate(dateStr);
+
+        if (initialStartTime) {
+          setStart(initialStartTime);
+        } else {
+          const hours = selectedDate.getHours().toString().padStart(2, '0');
+          const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+          setStart(`${dateStr}T${hours}:${minutes}`);
+        }
+        if (initialEndTime) {
+          setEnd(initialEndTime);
+        } else {
+          const endHour = (selectedDate.getHours() + 1) % 24;
+          setEnd(`${dateStr}T${endHour.toString().padStart(2, '0')}:00`);
+        }
       }
     }
-  }, [isOpen, selectedDate, initialStartTime, initialEndTime, eventToEdit, resetForm, editableCalendars]);
+  }, [isOpen, selectedDate, initialStartTime, initialEndTime, eventToEdit, resetForm]);
+
+  // Separate effect for default calendar selection
+  useEffect(() => {
+    if (isOpen && !calendarId && !eventToEdit && editableCalendars.length > 0) {
+      setCalendarId(editableCalendars[0]._id);
+    }
+  }, [isOpen, calendarId, eventToEdit, editableCalendars]);
 
   const handleClose = useCallback(() => {
     resetForm();
@@ -169,10 +178,13 @@ const EventModal = ({ isOpen, onClose, selectedDate, initialStartTime, initialEn
     const dateStr = eventDate || start.split('T')[0];
 
     // Construct Date objects
+    // Construct Date objects manually to prevent UTC shifts
     let eventStart, eventEnd;
     if (isAllDay) {
-      eventStart = new Date(`${dateStr}T00:00:00`);
-      eventEnd = new Date(`${dateStr}T23:59:59`);
+      // Construct local midnight for the selected day
+      const [y, m, d] = dateStr.split('-').map(Number);
+      eventStart = new Date(y, m - 1, d, 0, 0, 0);
+      eventEnd = new Date(y, m - 1, d, 23, 59, 59);
     } else {
       eventStart = new Date(start);
       eventEnd = new Date(end);
