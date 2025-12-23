@@ -15,6 +15,7 @@ const EventModal = ({ isOpen, onClose, selectedDate, initialStartTime, initialEn
   const [isAllDay, setIsAllDay] = useState(false);
   const [eventDate, setEventDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Meeting state
   const [isMeeting, setIsMeeting] = useState(false);
@@ -155,11 +156,20 @@ const EventModal = ({ isOpen, onClose, selectedDate, initialStartTime, initialEn
 
   // Handle Delete
   const handleDelete = async () => {
-    if (!eventToEdit) return;
-    if (window.confirm('Are you sure you want to delete this event?')) {
+    if (!eventToEdit || isDeleting) return;
+    setIsDeleting(true);
+    setError('');
+    try {
       const res = await deleteEvent(eventToEdit.calendarId, eventToEdit._id);
-      if (res.success) handleClose();
-      else setError(res.error);
+      if (res.success) {
+        handleClose();
+      } else {
+        setError(res.error || 'Failed to delete event');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -296,16 +306,9 @@ const EventModal = ({ isOpen, onClose, selectedDate, initialStartTime, initialEn
                 <h3 className="text-xl font-bold text-white">
                   {eventToEdit ? 'Edit Event' : (isMeeting ? 'Schedule Meeting' : 'Create Event')}
                 </h3>
-                <div className="flex items-center gap-2">
-                  {eventToEdit && (
-                    <button onClick={handleDelete} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
-                  <button onClick={handleClose} className="text-gray-400 hover:text-white transition-colors">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+                <button onClick={handleClose} className="text-gray-400 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
               <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
@@ -492,16 +495,31 @@ const EventModal = ({ isOpen, onClose, selectedDate, initialStartTime, initialEn
 
                   {/* Footer */}
                   {error && <div className="text-xs text-red-400">{error}</div>}
-                  <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                    <button type="button" onClick={handleClose} disabled={isSubmitting} className="px-5 py-2 text-sm text-gray-400 hover:text-white disabled:opacity-50">Cancel</button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-500 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {eventToEdit ? 'Save Changes' : 'Create Event'}
-                    </button>
+                  <div className="flex justify-between gap-3 pt-4 border-t border-white/5">
+                    <div>
+                      {eventToEdit && (
+                        <button
+                          type="button"
+                          onClick={handleDelete}
+                          disabled={isDeleting || isSubmitting}
+                          className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-500 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+                          {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={handleClose} disabled={isSubmitting || isDeleting} className="px-5 py-2 text-sm text-gray-400 hover:text-white disabled:opacity-50">Cancel</button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting || isDeleting}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-500 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {eventToEdit ? 'Save Changes' : 'Create Event'}
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
