@@ -301,9 +301,11 @@ export const CalendarProvider = ({ children }) => {
           }
           return a.isDefault ? -1 : 1;
         });
+        // Use current shared calendars ref to assign colors to own calendars
+        // This ensures own calendars get colors, but we DO NOT update shared calendars state here
+        // to avoid race conditions overwriting fetchSharedCalendars results.
         const colored = assignColors(sorted, sharedCalendarsRef.current);
         setCalendars(colored.calendars);
-        setSharedCalendars(colored.sharedCalendars);
       }
     } catch (error) {
       console.error(error);
@@ -469,8 +471,9 @@ export const CalendarProvider = ({ children }) => {
           owner: share.calendar.user,
           isShared: true,
         }));
+        // Use current own calendars ref to assign colors to shared calendars
+        // but DO NOT update own calendars state here.
         const colored = assignColors(calendarsRef.current, shared);
-        setCalendars(colored.calendars);
         setSharedCalendars(colored.sharedCalendars);
         return colored.sharedCalendars;
       }
