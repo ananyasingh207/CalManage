@@ -393,7 +393,7 @@ const Layout = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden relative z-10">
+      <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden relative z-10">
         <header className="px-8 py-6 flex items-center justify-between shrink-0">
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400">

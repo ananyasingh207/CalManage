@@ -24,7 +24,7 @@ import {
     differenceInMinutes,
     startOfDay
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Filter, MoreHorizontal, Clock, Trash2, X, MapPin, Edit } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Filter, MoreHorizontal, Clock, Trash2, X, MapPin, Edit, Loader } from 'lucide-react';
 import EventModal from '../components/Modals/EventModal';
 import { formatTimestamp } from '../utils/formatTimestamp';
 import GlassPanel from '../components/UI/GlassPanel';
@@ -41,17 +41,19 @@ const MonthView = memo(({ currentDate, events, handleDayClick, handleEventClick 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-        <div className="h-full flex flex-col blur-appear">
-            <div className="grid grid-cols-7 mb-2">
+        <div className="min-h-full flex flex-col blur-appear">
+            <div className="w-full max-w-full grid grid-cols-7 mb-2">
                 {weekDays.map(day => (
                     <div key={day} className="text-center text-xs font-bold text-indigo-300/70 uppercase tracking-widest py-2">
                         {day}
                     </div>
                 ))}
             </div>
-            <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-2">
+            <div className="flex-1 w-full max-w-full grid grid-cols-7 grid-rows-6 gap-2 min-h-[600px]">
                 {days.map(day => {
-                    const dayEvents = events.filter(ev => isSameDay(new Date(ev.start), day));
+                    const dayEvents = events
+                        .filter(ev => isSameDay(new Date(ev.start), day))
+                        .sort((a, b) => new Date(a.start) - new Date(b.start));
                     return (
                         <motion.div
                             key={day.toString()}
@@ -104,7 +106,7 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
     const weekEvents = events.filter(ev => {
         const evStart = new Date(ev.start);
         return evStart >= weekStart && evStart <= weekEnd;
-    });
+    }).sort((a, b) => new Date(a.start) - new Date(b.start));
 
     const allDayEvents = weekEvents.filter(ev => ev.allDay);
     const timedEvents = weekEvents.filter(ev => !ev.allDay);
@@ -218,7 +220,10 @@ const WeekView = memo(({ currentDate, events, handleDateClick, handleEventClick 
 
 const DayView = memo(({ currentDate, events, setSelectedDate, setIsEventModalOpen, handleDateClick, handleEventClick }) => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
-    const dayEvents = events.filter(ev => isSameDay(new Date(ev.start), currentDate));
+    const dayEvents = events
+        .filter(ev => isSameDay(new Date(ev.start), currentDate))
+        .sort((a, b) => new Date(a.start) - new Date(b.start));
+
     const allDayEvents = dayEvents.filter(ev => ev.allDay);
     const timedEvents = dayEvents.filter(ev => !ev.allDay);
 
@@ -329,8 +334,8 @@ const YearView = memo(({ currentDate, setCurrentDate, setView }) => {
                             setView('month');
                         }}
                         className={`p-3 rounded-2xl border cursor-pointer flex flex-col items-center justify-between ${isSameMonth(month, new Date())
-                                ? 'bg-gradient-to-br from-blue-900/30 to-purple-900/30 border-blue-500/30'
-                                : 'bg-white/5 border-white/5 hover:bg-white/10'
+                            ? 'bg-gradient-to-br from-blue-900/30 to-purple-900/30 border-blue-500/30'
+                            : 'bg-white/5 border-white/5 hover:bg-white/10'
                             }`}
                     >
                         <h3 className="text-lg font-bold text-white mb-2">{format(month, 'MMMM')}</h3>
@@ -369,36 +374,45 @@ const CalendarPage = () => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Edit support
     const [eventToEdit, setEventToEdit] = useState(null);
 
     useEffect(() => {
         const loadEvents = async () => {
-            let eventsArray = [];
-            for (const cal of calendars) {
-                const calEvents = await fetchCalendarEvents(cal._id);
-                const enrichedEvents = calEvents.map(ev => ({
-                    ...ev,
-                    color: cal.color,
-                    calendarName: cal.name,
-                    calendarId: cal._id
-                }));
-                eventsArray = [...eventsArray, ...enrichedEvents];
+            setIsLoading(true);
+            try {
+                let eventsArray = [];
+                for (const cal of calendars) {
+                    const calEvents = await fetchCalendarEvents(cal._id);
+                    const enrichedEvents = calEvents.map(ev => ({
+                        ...ev,
+                        color: cal.color,
+                        calendarName: cal.name,
+                        calendarId: cal._id
+                    }));
+                    eventsArray = [...eventsArray, ...enrichedEvents];
+                }
+                for (const cal of (sharedCalendars || [])) {
+                    const calEvents = await fetchCalendarEvents(cal._id);
+                    const enrichedEvents = calEvents.map(ev => ({
+                        ...ev,
+                        color: cal.color,
+                        calendarName: cal.name,
+                        calendarId: cal._id,
+                        isShared: true,
+                        ownerName: cal.owner?.name
+                    }));
+                    eventsArray = [...eventsArray, ...enrichedEvents];
+                }
+                setAllEvents(eventsArray);
+            } catch (error) {
+                console.error("Failed to load events:", error);
+            } finally {
+                setIsLoading(false);
             }
-            for (const cal of (sharedCalendars || [])) {
-                const calEvents = await fetchCalendarEvents(cal._id);
-                const enrichedEvents = calEvents.map(ev => ({
-                    ...ev,
-                    color: cal.color,
-                    calendarName: cal.name,
-                    calendarId: cal._id,
-                    isShared: true,
-                    ownerName: cal.owner?.name
-                }));
-                eventsArray = [...eventsArray, ...enrichedEvents];
-            }
-            setAllEvents(eventsArray);
         };
         loadEvents();
     }, [calendars, sharedCalendars, fetchCalendarEvents]);
@@ -445,7 +459,8 @@ const CalendarPage = () => {
     };
 
     return (
-        <div className="h-full flex flex-col space-y-4">
+
+        <div className="min-h-full w-full max-w-full flex flex-col space-y-4">
             <GlassPanel className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-20">
                 <div className="flex items-center space-x-4">
                     <h2 className="text-2xl font-bold text-white min-w-[200px] tracking-tight">
@@ -471,8 +486,8 @@ const CalendarPage = () => {
                                 key={v}
                                 onClick={() => setView(v.toLowerCase())}
                                 className={`flex-1 sm:flex-none px-5 py-1.5 rounded-lg text-sm font-medium transition-all relative z-10 ${view === v.toLowerCase()
-                                        ? 'text-white shadow-lg'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    ? 'text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                                     }`}
                             >
                                 {v}
@@ -492,7 +507,7 @@ const CalendarPage = () => {
                 </div>
             </GlassPanel>
 
-            <GlassPanel className="flex-1 p-4 overflow-hidden relative z-10">
+            <GlassPanel className="flex-1 w-full max-w-full p-4 relative z-10">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={view + currentDate.toString()}
@@ -500,7 +515,7 @@ const CalendarPage = () => {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.3, ease: "circOut" }}
-                        className="h-full"
+                        className="min-h-full"
                     >
                         {view === 'month' && <MonthView currentDate={currentDate} events={events} handleDayClick={handleDayClick} handleEventClick={handleEventClick} />}
                         {view === 'week' && <WeekView currentDate={currentDate} events={events} handleDateClick={handleDateClick} handleEventClick={handleEventClick} />}
@@ -508,14 +523,23 @@ const CalendarPage = () => {
                         {view === 'year' && <YearView currentDate={currentDate} setCurrentDate={setCurrentDate} setView={setView} />}
                     </motion.div>
                 </AnimatePresence>
-            </GlassPanel>
 
-            <EventModal
-                isOpen={isEventModalOpen}
-                onClose={() => { setIsEventModalOpen(false); setEventToEdit(null); }}
-                selectedDate={selectedDate}
-                eventToEdit={eventToEdit}
-            />
+                <AnimatePresence>
+                    {isLoading && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[1px] rounded-xl"
+                        >
+                            <div className="bg-dark-bg/80 p-4 rounded-2xl border border-white/10 shadow-xl backdrop-blur-md flex flex-col items-center gap-3">
+                                <Loader className="w-6 h-6 text-blue-400 animate-spin" />
+                                <span className="text-sm font-medium text-gray-400">Loading events...</span>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </GlassPanel>
 
             <AnimatePresence>
                 {isEventDetailOpen && selectedEvent && (
@@ -579,17 +603,37 @@ const CalendarPage = () => {
                                             onClick={async () => {
                                                 const calendarId = selectedEvent.calendarId || selectedEvent.calendar;
                                                 if (calendarId) {
-                                                    const result = await deleteEvent(calendarId, selectedEvent._id);
-                                                    if (result.success) {
-                                                        setAllEvents(prev => prev.filter(e => e._id !== selectedEvent._id));
-                                                        setIsEventDetailOpen(false);
+                                                    try {
+                                                        setIsDeleting(true);
+                                                        const result = await deleteEvent(calendarId, selectedEvent._id);
+                                                        if (result.success) {
+                                                            setAllEvents(prev => prev.filter(e => e._id !== selectedEvent._id));
+                                                            setIsEventDetailOpen(false);
+                                                        }
+                                                    } catch (error) {
+                                                        console.error("Failed to delete event:", error);
+                                                    } finally {
+                                                        setIsDeleting(false);
                                                     }
                                                 }
                                             }}
-                                            className="px-5 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-semibold hover:bg-red-600/30 transition-all flex items-center gap-2"
+                                            disabled={isDeleting}
+                                            className={`px-5 py-2 border rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${isDeleting
+                                                ? 'bg-red-600/10 border-red-500/20 text-red-400/50 cursor-not-allowed'
+                                                : 'bg-red-600/20 border-red-500/30 text-red-400 hover:bg-red-600/30'
+                                                }`}
                                         >
-                                            <Trash2 className="w-4 h-4" />
-                                            Delete
+                                            {isDeleting ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-red-400/50 border-t-red-400 rounded-full animate-spin" />
+                                                    Deleting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Trash2 className="w-4 h-4" />
+                                                    Delete
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
@@ -598,7 +642,14 @@ const CalendarPage = () => {
                     </div>
                 )}
             </AnimatePresence>
-        </div>
+
+            <EventModal
+                isOpen={isEventModalOpen}
+                onClose={() => { setIsEventModalOpen(false); setEventToEdit(null); }}
+                selectedDate={selectedDate}
+                eventToEdit={eventToEdit}
+            />
+        </div >
     );
 };
 
