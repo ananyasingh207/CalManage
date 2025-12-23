@@ -69,6 +69,15 @@ const MiniCalendarGrid = ({ currentDate, selectedDate, onDateSelect }) => {
   return <div className="space-y-1">{rows}</div>;
 };
 
+// Helper function to get greeting based on time
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'Good Morning';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon';
+  if (hour >= 17 && hour < 21) return 'Good Evening';
+  return 'Good Night';
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
@@ -226,13 +235,13 @@ const Dashboard = () => {
           <GlassPanel className="p-8 flex flex-col justify-center relative overflow-hidden group">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-all duration-700" />
             <h2 className="text-3xl font-bold text-white mb-2 relative z-10">
-              Good Morning,<br />
+              {getGreeting()},<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
                 {user?.name?.split(' ')[0]}
               </span>
             </h2>
             <p className="text-gray-400 relative z-10">
-              You have <span className="text-white font-semibold">{timedEvents.length}</span> meetings scheduled for {isSameDay(selectedDate, new Date()) ? 'today' : format(selectedDate, 'MMMM do')}.
+              You have <span className="text-white font-semibold">{todaysEvents.length}</span> {todaysEvents.length === 1 ? 'event' : 'events'} scheduled for {isSameDay(selectedDate, new Date()) ? 'today' : format(selectedDate, 'MMMM do')}.
             </p>
             <div className="mt-6 flex items-center gap-3 relative z-10">
               <button onClick={() => navigate('/calendar')} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-all backdrop-blur-md border border-white/5">
@@ -394,6 +403,20 @@ const Dashboard = () => {
                   </div>
                 </GlassPanel>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State for Past Dates with No Events */}
+        {isPastDate && todaysEvents.length === 0 && (
+          <div>
+            <h3 className="text-xs font-bold text-indigo-300 uppercase tracking-widest mb-4 pl-1">
+              {format(selectedDate, 'MMM d, yyyy')}
+            </h3>
+            <div className="p-8 text-center border border-white/5 rounded-xl border-dashed">
+              <p className="text-gray-500 text-sm">
+                {searchQuery && searchQuery.trim().length > 0 ? 'No events match your search.' : 'No events scheduled for this day.'}
+              </p>
             </div>
           </div>
         )}
